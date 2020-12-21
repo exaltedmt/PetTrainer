@@ -1,1 +1,1 @@
-This is Stage 2. We adopt a new, OpenCV, coordinate function. We work with tuples. In contrast, we are not saving the results to a png.
+This is Stage 3. We explore grouping options for our detections, as well as categorize output with rectangle or point debug modes.
