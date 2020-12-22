@@ -15,11 +15,16 @@ class WindowCapture:
     offset_y = 0
 
     # Constructor
-    def __init__(self, window_name):
-        # Find the handle for the window we want to capture
-        self.hwnd = win32gui.FindWindow(None, window_name)
-        if not self.hwnd:
-                raise Exception('Window not found: {}'.format(window_name))
+    def __init__(self, window_name=None):
+        # If no window name is given, capture full screen.
+        if window_name is None:
+            self.hwnd = win32gui.GetDesktopWindow()
+        else:
+            # Find the handle for the window we want to capture
+            self.hwnd = win32gui.FindWindow(None, window_name)
+            if not self.hwnd:
+                    raise Exception('Window not found: {}'.format(window_name))
+                
         # define monitor width and height
         # now properties of self
         # self.w = 1920
@@ -45,7 +50,10 @@ class WindowCapture:
         
     # Helps when we cant find window name
     # Lists hex values and respective names.
-    def list_window_names(self):
+    # Not utilizing the self param inside the function
+    # Making this static allows us to call it without needing an instance of this class.
+    @staticmethod
+    def list_window_names():
         def winEnumHandler(hwnd, ctrx):
             if win32gui.IsWindowVisible(hwnd):
                 print(hex(hwnd), win32gui.GetWindowText(hwnd))
@@ -74,7 +82,7 @@ class WindowCapture:
         dataBitMap.CreateCompatibleBitmap(dcObj, self.w, self.h)
         cDC.SelectObject(dataBitMap)
         # cDC.BitBlt((0,0), (self.w, self.h), dcObj, (0,0), win32con.SRCCOPY)
-        cDC.BitBlt((0,0), (self.w, self.h), dcObj, (self.cropped_x, self.cropped_y), win32con.SRCCOPY)
+        cDC.BitBlt((0, 0), (self.w, self.h), dcObj, (self.cropped_x, self.cropped_y), win32con.SRCCOPY)
 
         # Save the screenshot - Creates a bunch of bmps from loop.
         # dataBitMap.SaveBitmapFile(cDC, 'debug.bmp')
@@ -90,7 +98,8 @@ class WindowCapture:
         win32gui.DeleteObject(dataBitMap.GetHandle())
 
         # Get rid of the alpha channel, so matchTemplate doesnt get thrown off.
-        img = img[...,:3]
+        # ONLY NECESSARY IF OUR NEEDLE IMAGE HAS LESS CHANNELS!
+        # img = img[..., :3]
 
         # Make image C_CONTIGUOUS
         # else we get a TypeError: int from draw_rectangles, from type tuple
