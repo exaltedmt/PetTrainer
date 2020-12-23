@@ -88,14 +88,14 @@ class WindowCapture:
             # Wait for TTR Launcher
             while(not self.hwnd):
                 self.hwnd = win32gui.FindWindow(None, "Toontown Rewritten Launcher")
-                # Dialog Box!
-                root = Tk()
-                prompt = 'Do not touch other programs until we are logged in!'
-                label1 = Label(root, text=prompt, width=len(prompt))
-                label1.pack()
-                    
-                root.after(1000, root.destroy())
-                root.mainloop()
+            # Dialog Box!
+            root = Tk()
+            prompt = 'Do not touch other programs until we are logged in!'
+            label1 = Label(root, text=prompt, width=len(prompt))
+            label1.pack()
+                
+            root.after(1000, root.destroy())
+            root.mainloop()
         else:
             # Dialog box for selecting a file to open.
             print('Please select file to open!')
