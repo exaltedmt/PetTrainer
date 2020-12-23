@@ -48,9 +48,11 @@ class Movement:
             print(encrypted1)
             print(encrypted2)
         """
-        # Decrypt our user name and pw.
-        key = self.load_key()
-        f = Fernet(key)
+        # Decrypt our user name and pw. IF you want to use it,
+        # remove the encryption method, or generate your own encrypted values.
+        # Add in your own user/pw instead.``
+        self.key = self.load_key()
+        f = Fernet(self.key)
 
         # Target is selectable from main file now.
         if(current == "Toontown Rewritten Launcher"):
@@ -150,4 +152,4 @@ class Movement:
 
     def load_key(self):
         # Loads the key from the current directory named `key.key`
-        return open("C:\Users\virul\Documents\Projects\Botting\PetTrainer\Stage6\key.key", "rb").read()
+        return open("key.key", "rb").read()
