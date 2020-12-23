@@ -1,7 +1,7 @@
 import numpy as np
 import win32gui, win32ui, win32con
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, Label, messagebox, Tk
 import subprocess as sp
 
 # In classes, every function must have self as first param.
@@ -32,10 +32,10 @@ class WindowCapture:
             # Warning: This will still run if the title of any window matches. 
             self.hwnd = win32gui.FindWindow(None, window_name)
             if not self.hwnd:
-                    # raise Exception('Window not found: {}'.format(window_name))
-                    print('Window not found: {}'.format(window_name))
-                    # Instead of killing the script we will launch the exe it ourselves.
-                    self.launcher()
+                # raise `Ex`ception('Window not found: {}'.format(window_name))
+                print('Window not found: {}'.format(window_name))
+                # Instead of killing the script we will launch the exe it ourselves.
+                self.launcher()
                     
         # define monitor width and height
         # now properties of self
@@ -83,15 +83,29 @@ class WindowCapture:
             print('Opening Launcher...')
             # Must specify CWD so that our launcher does download patch files
             # in our script folder
-            self.game = sp.Popen("Launcher.exe", stdout=sp.PIPE, stderr=sp.PIPE, shell=True, cwd=self.file_path).communicate()
-            self.hwnd = win32gui.GetForegroundWindow()
+            # shell=True because windows.
+            self.game = sp.Popen("Launcher.exe", stdout=sp.PIPE, stderr=sp.PIPE, shell=True, cwd=self.file_path)
+            # Wait for TTR Launcher
+            while(not self.hwnd):
+                self.hwnd = win32gui.FindWindow(None, "Toontown Rewritten Launcher")
+                # Dialog Box!
+                root = Tk()
+                prompt = 'Do not touch other programs until we are logged in!'
+                label1 = Label(root, text=prompt, width=len(prompt))
+                label1.pack()
+                    
+                root.after(1000, root.destroy())
+                root.mainloop()
         else:
             # Dialog box for selecting a file to open.
             print('Please select file to open!')
             root = tk.Tk()
             root.withdraw()
             self.file_path = filedialog.askopenfilename()
-            self.game = sp.Popen("Launcher.exe", stdout=sp.PIPE, stderr=sp.PIPE, shell=True, cwd=self.file_path).communicate()
+            # self.file_paths.rsplit('/', 1)[0]: Separates string into array before last backslash
+            self.game = sp.Popen(self.file_path, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, cwd=self.file_paths.rsplit('/', 1)[0])
+            # A less direct approach to getting the window
+            time.sleep(7)
             self.hwnd = win32gui.GetForegroundWindow()
 
     # Helps when we cant find window name
@@ -120,7 +134,7 @@ class WindowCapture:
 
         # can be done once in the constructor
         # hwnd = win32gui.FindWindow(None, 'Toontown Rewritten')
-
+    
         wDC = win32gui.GetWindowDC(self.hwnd)
         dcObj = win32ui.CreateDCFromHandle(wDC)
         cDC = dcObj.CreateCompatibleDC()
