@@ -3,12 +3,17 @@ import win32gui, win32ui, win32con
 import tkinter as tk
 from tkinter import filedialog, Label, messagebox, Tk
 import subprocess as sp
+from threading import Thread, Lock
 
 # In classes, every function must have self as first param.
 class WindowCapture:
 
-    # define monitor width and height
-    # now properties of self
+    # Threading Properties
+    stopped = True
+    lock = None
+    screenshot = None
+
+    # Properties
     w = 0
     h = 0
     hwnd = None
@@ -18,10 +23,12 @@ class WindowCapture:
     offset_y = 0
     game = None
     file_path = "C:/Program Files (x86)/Toontown Rewritten/"
-    login = False
 
     # Constructor
     def __init__(self, window_name=None, select=False):
+        # create a thread lock object
+        self.lock = Lock()
+
         # If no window name is given, capture full screen.
         if window_name is None:
             self.hwnd = win32gui.GetDesktopWindow()
@@ -68,20 +75,11 @@ class WindowCapture:
              return None
         
     def launcher(self, select=False):
-        # Reference a text file that holds the TT launcher location
         # If location not found from default place, ask via dialog box
-        # subprocess.call() waits until program finishes before continuing script.
-        # enclosing file_path in [] allows for multiple programs to open.
-        # get output from process "Something to print"
-        # one_line_output = p.stdout.readline()
-        # write 'a line\n' to the process
-        # p.stdin.write('a line\n')
-        # communicate will close stdout/in/err
         # Once login pops up, grab that window
-
         if not select:
             print('Opening Launcher...')
-            # Must specify CWD so that our launcher does download patch files
+            # Must specify CWD so that our launcher doesnt download patch files
             # in our script folder
             # shell=True because windows.
             self.game = sp.Popen("Launcher.exe", stdout=sp.PIPE, stderr=sp.PIPE, shell=True, cwd=self.file_path)
@@ -102,7 +100,8 @@ class WindowCapture:
             root = tk.Tk()
             root.withdraw()
             self.file_path = filedialog.askopenfilename()
-            # self.file_paths.rsplit('/', 1)[0]: Separates string into array before last backslash
+            # self.file_paths.rsplit('/', 1)[0]: 
+            # Separates string into array before last backslash
             self.game = sp.Popen(self.file_path, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, cwd=self.file_paths.rsplit('/', 1)[0])
             # A less direct approach to getting the window
             time.sleep(7)
@@ -110,8 +109,6 @@ class WindowCapture:
 
     # Helps when we cant find window name
     # Lists hex values and respective names.
-    # Not utilizing the self param inside the function
-    # Making this static allows us to call it without needing an instance of this class.
     @staticmethod
     def list_window_names():
         def winEnumHandler(hwnd, ctrx):
@@ -131,23 +128,15 @@ class WindowCapture:
     # fastest-way-to-take-a-screenshot-with-python-on-windows/3586280#3586280
     # Win32 calls are a more direct way to do things. Saves resources, less dependencies.
     def get_screenshot(self):
-
-        # can be done once in the constructor
-        # hwnd = win32gui.FindWindow(None, 'Toontown Rewritten')
-    
         wDC = win32gui.GetWindowDC(self.hwnd)
         dcObj = win32ui.CreateDCFromHandle(wDC)
         cDC = dcObj.CreateCompatibleDC()
         dataBitMap = win32ui.CreateBitmap()
         dataBitMap.CreateCompatibleBitmap(dcObj, self.w, self.h)
         cDC.SelectObject(dataBitMap)
-        # cDC.BitBlt((0,0), (self.w, self.h), dcObj, (0,0), win32con.SRCCOPY)
         cDC.BitBlt((0, 0), (self.w, self.h), dcObj, (self.cropped_x, self.cropped_y), win32con.SRCCOPY)
 
-        # Save the screenshot - Creates a bunch of bmps from loop.
-        # dataBitMap.SaveBitmapFile(cDC, 'debug.bmp')
         signedIntArray = dataBitMap.GetBitmapBits(True)
-        # img = np.array(signedIntArray, dtype = 'uint8')
         img = np.fromstring(signedIntArray, dtype = 'uint8')
         img.shape = (self.h, self.w, 4)
 
@@ -166,3 +155,23 @@ class WindowCapture:
         img = np.ascontiguousarray(img)
          
         return img
+
+    # threading methods
+
+    def start(self):
+        self.stopped = False
+        t = Thread(target=self.run)
+        t.start()
+
+    def stop(self):
+        self.stopped = True
+
+    def run(self):
+        # TODO: you can write your own time/iterations calculation to determine how fast this is
+        while not self.stopped:
+            # get an updated image of the game
+            screenshot = self.get_screenshot()
+            # lock the thread while updating the results
+            self.lock.acquire()
+            self.screenshot = screenshot
+            self.lock.release()
