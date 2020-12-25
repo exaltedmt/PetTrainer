@@ -1,8 +1,9 @@
 import numpy as np
 import win32gui, win32ui, win32con
 import tkinter as tk
-from tkinter import filedialog, Label, messagebox, Tk
+from tkinter import filedialog, messagebox, Tk
 import subprocess as sp
+from time import sleep
 from threading import Thread, Lock
 
 # In classes, every function must have self as first param.
@@ -42,8 +43,9 @@ class WindowCapture:
                 # raise `Ex`ception('Window not found: {}'.format(window_name))
                 print('Window not found: {}'.format(window_name))
                 # Instead of killing the script we will launch the exe it ourselves.
-                self.launcher()
-                    
+                self.hwnd = win32gui.FindWindow(None, "Toontown Rewritten Launcher")
+                if not self.hwnd:
+                    self.launcher()
         # define monitor width and height
         # now properties of self
         # self.w = 1920
@@ -73,27 +75,34 @@ class WindowCapture:
         else:
              print("Not listening to any windows.")
              return None
-        
+
+    # Wait for TTR Launcher
+    def wait_hwnd(self, window_name="Toontown Rewritten"):
+            # self.list_window_names()
+            while(not self.hwnd):
+                self.hwnd = win32gui.FindWindow(None, window_name)
+            sleep(1)
+            win32gui.SetForegroundWindow(self.hwnd)
+            sleep(1)
+
     def launcher(self, select=False):
         # If location not found from default place, ask via dialog box
         # Once login pops up, grab that window
         if not select:
             print('Opening Launcher...')
+            # Dialog Box!
+            root = Tk()
+            root.iconify()
+            # Make foreground - root.lift() or...
+            root.attributes("-topmost", True)
+            prompt = 'Do not touch other programs until we are logged in!'
+            root.after(3000, root.destroy)
+            messagebox.Message(title="Warning!", message=prompt, master=root).show()
             # Must specify CWD so that our launcher doesnt download patch files
             # in our script folder
             # shell=True because windows.
             self.game = sp.Popen("Launcher.exe", stdout=sp.PIPE, stderr=sp.PIPE, shell=True, cwd=self.file_path)
-            # Wait for TTR Launcher
-            while(not self.hwnd):
-                self.hwnd = win32gui.FindWindow(None, "Toontown Rewritten Launcher")
-            # Dialog Box!
-            root = Tk()
-            prompt = 'Do not touch other programs until we are logged in!'
-            label1 = Label(root, text=prompt, width=len(prompt))
-            label1.pack()
-                
-            root.after(1000, root.destroy())
-            root.mainloop()
+            self.wait_hwnd("Toontown Rewritten Launcher")
         else:
             # Dialog box for selecting a file to open.
             print('Please select file to open!')
@@ -104,7 +113,7 @@ class WindowCapture:
             # Separates string into array before last backslash
             self.game = sp.Popen(self.file_path, stdout=sp.PIPE, stderr=sp.PIPE, shell=True, cwd=self.file_paths.rsplit('/', 1)[0])
             # A less direct approach to getting the window
-            time.sleep(7)
+            time.sleep(1)
             self.hwnd = win32gui.GetForegroundWindow()
 
     # Helps when we cant find window name

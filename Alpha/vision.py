@@ -16,6 +16,9 @@ class Vision:
     method = None
     result = None
     screenshot = None
+    firstRun = True
+    bestMatch = 0.0
+    max_results = 1
 
     # Constructor
     def __init__(self, needle_img_path, method=cv.TM_CCOEFF_NORMED):
@@ -46,6 +49,10 @@ class Vision:
         
         # print('Best match top left position: %s' % str(max_loc))
         # print('Best match confidence: %s' % max_val)
+        # For some reason cv.minMaxLoc does not return values after
+        # already being called in this thread, so here's a work around.
+        # 0.005 is to account for the head turning around.
+        self.bestMatch = max_val - 0.005
 
         return max_val
 
@@ -77,7 +84,9 @@ class Vision:
         # Apply property tags
         # Making result a property lets us find best match outside of class.
         self.result = cv.matchTemplate(haystack_img, self.needle_img, self.method)
-        # print(self.bestMatch())
+        if self.firstRun:
+            self.bestMatch()
+        # print(self.bestMatch)
 
         # We get the coordinates of the values under a given threshold
         # >= or <= depending on method used in cv.matchTemplate
@@ -89,15 +98,16 @@ class Vision:
         # concatenate together results without causing an error
         # Might be the fix for black screen capture
         if not locations:
-            print("Target not found.")
+            print("\nTarget not found.\n")
             return np.array([], dtype=np.int32).reshape(0, 4)
 
-        # Let's create the list of [x, y, w ,h] rectangles
+        rectangles = []
+        # Let's create the list of [x, y, w, h] rectangles
         for loc in locations:
             rect = [int(loc[0]), int(loc[1]), self.needle_w, self.needle_h]
-            self.rectangles.append(rect)
+            rectangles.append(rect)
             # Twice to combat cv.groupRectangles problem.
-            self.rectangles.append(rect) 
+            rectangles.append(rect)
 
         # You'll notice a lot of overlapping rectangles get drawn. We can eliminate those redundant
         # locations by using groupRectangles().
@@ -105,16 +115,16 @@ class Vision:
         # third param - EPS - determines how close in order to group.
         # Returns inaccurate detections for single objects.
         # We can combat this by having at least one overlap.
-        self.rectangles, weights = cv.groupRectangles(self.rectangles, groupThreshold=1, eps=0.5)
+        rectangles, weights = cv.groupRectangles(rectangles, groupThreshold=1, eps=0.5)
         # print(rectangles)
 
         # for performance reasons, return a limited number of results.
         # these aren't necessarily the best results.
-        if len(self.rectangles) > max_results:
-            print('Warning: too many results, raise the threshold.')
-            self.rectangles = self.rectangles[:max_results]
+        if len(rectangles) > self.max_results:
+            print('\nWarning: too many results, raise the threshold.\n')
+            rectangles = rectangles[:self.max_results]
 
-        return self.rectangles
+        return rectangles
 
     def get_click_points(self, rectangles):
         # Move this up top.
@@ -140,23 +150,23 @@ class Vision:
         line_color = (0, 255, 0)
         line_type = cv.LINE_4
 
-            # if debug_mode == 'rectangles':
-            for (x, y, w, h) in rectangles:
-                # Determine the box positions
-                # we gave top_left/right and needle_w/h variable names, so use those.
-                top_left = (x, y)
-    
-                # bottom_right = (top_left[0] + needle_w, top_left[1] + needle_h)
-                bottom_right = (x + w, y + h)
+        # if debug_mode == 'rectangles':
+        for (x, y, w, h) in rectangles:
+            # Determine the box positions
+            # we gave top_left/right and needle_w/h variable names, so use those.
+            top_left = (x, y)
 
-                # Draw the Box
-                cv.rectangle(
-                    haystack_img,
-                    top_left,
-                    bottom_right,
-                    line_color,
-                    line_type
-                )
+            # bottom_right = (top_left[0] + needle_w, top_left[1] + needle_h)
+            bottom_right = (x + w, y + h)
+
+            # Draw the Box
+            cv.rectangle(
+                haystack_img,
+                top_left,
+                bottom_right,
+                line_color,
+                line_type
+            )
 
     def draw_crosshairs(self, haystack_img, crosshairs):
         marker_color = (255, 0, 255)
@@ -198,12 +208,11 @@ class Vision:
                 # do object detection
                 # Show the best match only. Must run find() at least once however.
                 if not self.firstRun:
-                    bestMatch = self.bestMatch()
-                    rectangles = self.find(screenshot, threshold=bestMatch)
-                    output_image = self.draw_rectangles(screenshot, rectangles)
+                    rectangles = self.find(self.screenshot, threshold=self.bestMatch)
+                    output_image = self.draw_rectangles(self.screenshot, rectangles)
                 else:    
-                    rectangles = self.find(screenshot)
-                    output_image = self.draw_rectangles(screenshot, rectangles)
+                    rectangles = self.find(self.screenshot)
+                    output_image = self.draw_rectangles(self.screenshot, rectangles)
                     self.firstRun = False
                     
                 # lock the thread while updating the results
