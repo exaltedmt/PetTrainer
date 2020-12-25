@@ -155,21 +155,6 @@ class Movement:
 
         print('Done.')
 
-    # This function will be performed inside another thread
-    def bot_actions(self, rectangles):
-        if len(rectangles) > 0:
-            # grab the first objects detection in the list and 
-            # find the place to click
-            targets = vision.get_click_points(rectangles)
-            target = wincap.get_screen_position(targets[0])
-            pyautogui.moveTo(x=target[0], y=target[1])
-            pyautogui.click()
-            sleep(3)
-        
-        # let the main loop know when this process is completed
-        # global is_bot_in_action
-        # is_bot_in_action = False
-
     # Encrypts our user/pw
     def write_key(self):
         # Generates a key and save it into a file

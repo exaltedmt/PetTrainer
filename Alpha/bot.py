@@ -34,7 +34,7 @@ class TTRBot:
     target_tooltip = None
     click_history = []
 
-    def __init__(self, window_offset, window_size):
+    def __init__(self, window_offset, window_size, tooltip='tooltip.png'):
         # create a thread lock object
         self.lock = Lock()
 
@@ -46,7 +46,7 @@ class TTRBot:
         self.window_h = window_size[1]
 
         # pre-load the needle image used to confirm our object detection
-        self.target_tooltip = cv.imread('tooltip.png', cv.IMREAD_UNCHANGED)
+        self.target_tooltip = cv.imread(tooltip, cv.IMREAD_UNCHANGED)
 
         # start bot in the initializing mode to allow us time to get setup.
         # mark the time at which this started so we know when to complete it
