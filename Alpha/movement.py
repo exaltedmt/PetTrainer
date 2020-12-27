@@ -16,9 +16,9 @@ class Command:
     GOOD = 2
     TRICKS = 3
     TRICK = 4
-    TIRED = 5
-    SCRATCH = 6
-    FEED = 7
+    SCRATCH = 5
+    FEED = 6
+    TIRED = 7
     EXCITED = 8
 
 class Movement:
@@ -52,9 +52,9 @@ class Movement:
             "good.png",
             "Tricks.png",
             "Play_dead.png",
-            "Tired.png",
             "Scratch.png",
             "Feed.png",
+            "Tired.png",
             "Excited.png"
         ]
 
@@ -64,9 +64,9 @@ class Movement:
             "good_tt.png",
             "Tricks_tt.png",
             "Play_dead_tt.png",
-            "Tired.png",
             "Scratch_tt.png",
             "Feed_tt.png",
+            "Tired_tt.png",
             "Excited_tt.png"
         ]
 
