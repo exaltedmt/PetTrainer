@@ -52,13 +52,13 @@ class Vision:
         # For some reason cv.minMaxLoc does not return values after
         # already being called in this thread, so here's a work around.
         # 0.005 is to account for the head turning around.
-        self.bestMatch = max_val - 0.005
+        self.bestMatch = max_val - 0.01
 
         return max_val
 
     # From def findClickPositions(needle_img_path, haystack_img, threshold=0.72, debug_mode=None):
     # To:
-    def find(self, haystack_img, threshold=0.9, debug_mode=None):
+    def find(self, haystack_img, threshold=1):
 
         # Can use IMREAD flags to do different pre-processing of image files.
         # Like making them grayscale or reducing the size.
@@ -120,9 +120,11 @@ class Vision:
 
         # for performance reasons, return a limited number of results.
         # these aren't necessarily the best results.
+        """
         if len(rectangles) > self.max_results:
             print('\nWarning: too many results, raise the threshold.\n')
             rectangles = rectangles[:self.max_results]
+        """
 
         return rectangles
 
@@ -168,6 +170,8 @@ class Vision:
                 line_type
             )
 
+        return haystack_img
+
     def draw_crosshairs(self, haystack_img, crosshairs):
         marker_color = (255, 0, 255)
         marker_type = cv.MARKER_CROSS
@@ -176,6 +180,8 @@ class Vision:
         for (center_x, center_y) in points:
             # draw the center point
             cv.drawMarker(haystack_img, (center_x, center_y), marker_color, marker_type)
+        
+        return haystack_img
 
     # Tabbing over 1 will still give video stream, outside if rectangles stmt,
     # even if we dont find any results.
@@ -209,10 +215,10 @@ class Vision:
                 # Show the best match only. Must run find() at least once however.
                 if not self.firstRun:
                     rectangles = self.find(self.screenshot, threshold=self.bestMatch)
-                    output_image = self.draw_rectangles(self.screenshot, rectangles)
+                    # output_image = self.draw_rectangles(self.screenshot, rectangles)
                 else:    
                     rectangles = self.find(self.screenshot)
-                    output_image = self.draw_rectangles(self.screenshot, rectangles)
+                    # output_image = self.draw_rectangles(self.screenshot, rectangles)
                     self.firstRun = False
                     
                 # lock the thread while updating the results

@@ -8,6 +8,18 @@ from vision import Vision
 from bot import TTRBot, BotState
 import pydirectinput as pdi
 from cryptography.fernet import Fernet
+import win32gui
+
+class Command:
+    OPTION = 0
+    PETS = 1
+    GOOD = 2
+    TRICKS = 3
+    TRICK = 4
+    TIRED = 5
+    SCRATCH = 6
+    FEED = 7
+    EXCITED = 8
 
 class Movement:
 
@@ -16,7 +28,13 @@ class Movement:
     wincap = None
     vision = None
     bot = None
-    firstRun = True
+    haystack_wnd = None
+    targetList = []
+    tooltipList = []
+    loginList = []
+    state = 0
+    isGood = False
+    loggingIn = False
     points = [] 
     current = ''
     key = None
@@ -24,7 +42,34 @@ class Movement:
     pw = b'gAAAAABf470AeGuSrJmZEZrBzs8rJEQqiUDUoArQPNSkMJnlaKyxEknOUXvtvpWlLbTqBkq0SnEnYvjadV7gFI1sd7jtJJbImQ=='
 
     # Constructor
-    def __init__(self, target='speedchat_bubble.png', haystack_wnd='Toontown Rewritten', tooltip='tooltip.png'):
+    def __init__(self, target='doodle.png', tooltip='doodle.png', haystack_wnd='Toontown Rewritten'):
+
+        self.haystack_wnd = haystack_wnd
+        # Our list of commands to execute in sequence
+        self.targetList = [
+            "speedchat_bubble.png",
+            "Pets.png",
+            "good.png",
+            "Tricks.png",
+            "Play_dead.png",
+            "Tired.png",
+            "Scratch.png",
+            "Feed.png",
+            "Excited.png"
+        ]
+
+        self.tooltipList = [
+            "tooltip.png",
+            "Pets_tt.png",
+            "good_tt.png",
+            "Tricks_tt.png",
+            "Play_dead_tt.png",
+            "Tired.png",
+            "Scratch_tt.png",
+            "Feed_tt.png",
+            "Excited_tt.png"
+        ]
+
         # Window Capture has default to TTR, else we choose from main.
         self.wincap = WindowCapture(window_name=haystack_wnd)
         
@@ -32,14 +77,12 @@ class Movement:
         # check foreground window title
         current = self.wincap.title()
 
-        # Target is selectable from main file now.
+        # Only two modes. Does not work from character select.
         if(current == "Toontown Rewritten Launcher"):
             self.login()
         else:
             self.vision = Vision(target)
             self.bot = TTRBot((self.wincap.offset_x, self.wincap.offset_y), (self.wincap.w, self.wincap.h))
-
-        
 
         # When giving our property objects new parameters
         # we must stop and start again, otherwise "stopped"
@@ -48,11 +91,23 @@ class Movement:
         self.vision.start()
         self.bot.start()
 
-        # Will only seek best match.
         self.locator()
+
+    def command_chain(self, command, tooltip):
+        self.wincap.stop()
+        self.vision.stop()
+        self.bot.stop()
+
+        self.wincap = WindowCapture(window_name=self.haystack_wnd)
+        self.vision = Vision(command)
+        self.bot = TTRBot((self.wincap.offset_x, self.wincap.offset_y), (self.wincap.w, self.wincap.h), tooltip)
+
+        self.wincap.start()
+        self.vision.start()
+        self.bot.start()
         
     """ 
-    The Encryption Method I used:
+    Cryptology:
         click.write_key()
         key = click.load_key()
         message1 = user.encode()
@@ -90,14 +145,19 @@ class Movement:
         sleep(10.5)
         pdi.press(['up'])
         sleep(4.5)
-        self.wincap = WindowCapture("Toontown Rewritten")
+        self.wincap = WindowCapture(self.haystack_wnd)
         self.vision = Vision("bear.png")
         self.bot = TTRBot((self.wincap.offset_x, self.wincap.offset_y), (self.wincap.w, self.wincap.h), 'tooltip_bear.png')
 
     def locator(self):
         loop_time = time()
+        firstRun = True
+
         while(True):
-                # if we don't have a screenshot yet, don't run the code below this point yet
+            # All the classes run in their own thread that's separate from the main thread
+            # so that the code here can continue while the bot performs its actions
+
+            # if we don't have a screenshot yet, don't run the code below this point yet
             if self.wincap.screenshot is None:
                 continue
             
@@ -117,43 +177,94 @@ class Movement:
                 targets = self.vision.get_click_points(self.vision.rectangles)
                 self.bot.update_targets(targets)
                 self.bot.update_screenshot(self.wincap.screenshot)
+            elif self.bot.state == BotState.MOVING:
+                # when moving, we need fresh screenshots to determine when we've stopped moving.
+                self.bot.update_screenshot(self.wincap.screenshot)
             elif self.bot.state == BotState.STILL:
-                # nothing is needed while we wait for the mining to finish
-                pass
-
+                # nothing is needed while we wait for the ui to finish
+                """
+                class Command:
+                    OPTION = 0
+                    PETS = 1
+                    GOOD = 2
+                    TRICKS = 3
+                    TRICK = 4
+                    TIRED = 5
+                    SCRATCH = 6 - To save jellybeans.
+                    FEED = 7
+                    EXCITED = 8
+                """
+                # Regular route - On successfull click
+                if not self.loggingIn:
+                    if self.state + 1 < Command.EXCITED:
+                        # Always do one round of excited check. 
+                        # Similar to bot's confirm_tooltip method
+                        excited = cv.imread(self.targetList[Command.EXCITED], cv.IMREAD_UNCHANGED)
+                        excitement = cv.matchTemplate(self.wincap.screenshot, excited, cv.TM_CCOEFF_NORMED)
+                        # get the best match postition
+                        min_val, bestMatch, min_loc, max_loc = cv.minMaxLoc(excitement)
+                        if bestMatch >= 0.60:
+                            # No need to feed if excited
+                            if self.state == Command.FEED or self.state == Command.SCRATCH:
+                                self.state = 0
+                                isGood = False
+                            # If we've already said "Good Boy!"
+                            # Don't change state if at upper state.h
+                            elif self.isGood:
+                                self.state = Command.TRICKS
+                            # If Good, then naw.
+                            if self.state == Command.GOOD:
+                                self.isGood = True
+                            self.command_chain(command=self.targetList[self.state], tooltip=self.tooltipList[self.state])
+                        # If tired, or neutral, not good.
+                        elif self.state == Command.FEED:
+                            self.isGood = False
+                            self.command_chain(command=self.targetList[self.state], tooltip=self.tooltipList[self.state])
+                        else:
+                            self.state = Command.SCRATCH
+                            self.isGood = False
+                            self.command_chain(command=self.targetList[self.state], tooltip=self.tooltipList[self.state])
+                        
+                        # Increment after everything is done.
+                        if firstRun:
+                            firstRun = False
+                        else: self.state += 1
+                    else:
+                        self.isGood = False
+                        self.state = Command.OPTION
+                        self.command_chain(command=self.targetList[self.state], tooltip=self.tooltipList[self.state])
+                # Use loginList instead
+                else:
+                    # for now
+                    pass
+                
             if self.DEBUG:
                 # draw the detection results onto the original image
                 detection_image = self.vision.draw_rectangles(self.wincap.screenshot, self.vision.rectangles)
                 # display the images
-                if detection_image:
+                try: 
                     cv.imshow('Matches', detection_image)
-
-            # Take bot actions
-            # Run the funtion in a thread that's separate from the main thread
-            # so that the code here can continue while the bot performs its actions
-            # Now a part of vision!
-            """
-            if not is_bot_in_action:
-                is_bot_in_action = False
-                t = Thread(target=bot_actions, args=(rectangles,))
-                t.start()
-            """
+                except:
+                    pass
+                # sleep(0.5)
+                # win32gui.SetForegroundWindow(win32gui.FindWindow(None, "Toontown Rewritten"))
 
             # debug the loop rate - bad atm
             print('FPS {}'.format(1 / (time() - loop_time)))
+            print(self.state)
             loop_time = time()
 
             # Press 'q' with the output window focused to exit.
             # Waits 1 ms every loop to process key presses
             key = cv.waitKey(1)
             if key == ord('q'):
-                wincap.stop()
-                vision.stop()
-                bot.stop()
+                self.wincap.stop()
+                self.vision.stop()
+                self.bot.stop()
                 cv.destroyAllWindows()
                 break
 
-        print('Done.')
+        print('Done performing {} task.'.format(self.targetList[self.state]))
 
     # Encrypts our user/pw
     def write_key(self):

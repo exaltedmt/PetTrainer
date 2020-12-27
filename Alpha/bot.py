@@ -7,8 +7,9 @@ from math import sqrt
 class BotState:
     INITIALIZING = 0
     SEARCHING = 1
-    STILL = 2
-    BACKTRACKING = 3
+    MOVING = 2
+    STILL = 3
+    BACKTRACKING = 4
 
 class TTRBot:
     
@@ -16,7 +17,8 @@ class TTRBot:
     INITIALIZING_SECONDS = 6
     CLICKING_SECONDS = 4
     IGNORE_RADIUS = 30
-    TOOLTIP_MATCH_THRESHOLD = 0.9
+    TOOLTIP_MATCH_THRESHOLD = 0.6
+    MOVEMENT_STOPPED_THRESHOLD = 0.92
 
     # threading properties
     stopped = True
@@ -33,8 +35,9 @@ class TTRBot:
     window_h = 0
     target_tooltip = None
     click_history = []
+    tooltip = None
 
-    def __init__(self, window_offset, window_size, tooltip='tooltip.png'):
+    def __init__(self, window_offset, window_size, tooltip='doodle.png'):
         # create a thread lock object
         self.lock = Lock()
 
@@ -47,6 +50,7 @@ class TTRBot:
 
         # pre-load the needle image used to confirm our object detection
         self.target_tooltip = cv.imread(tooltip, cv.IMREAD_UNCHANGED)
+        self.tooltip = tooltip
 
         # start bot in the initializing mode to allow us time to get setup.
         # mark the time at which this started so we know when to complete it
@@ -76,17 +80,25 @@ class TTRBot:
             # screen
             target_pos = targets[target_i]
             screen_x, screen_y = self.get_screen_position(target_pos)
-            print('\nMoving mouse to x:{} y:{}\n'.format(screen_x, screen_y))
+            print('\nMoving mouse to x: {}, y: {}\n'.format(screen_x, screen_y))
 
             # move the mouse
             pyautogui.moveTo(x=screen_x, y=screen_y)
             # short pause to let the mouse movement complete and allow
             # time for the tooltip to appear
             sleep(1.250)
-            # confirm limestone tooltip
-            if self.confirm_tooltip(target_pos):
-                print('\nClick on confirmed target at x:{} y:{}\n'.format(screen_x, screen_y))
-                found_speedchat = True
+
+            # dont check tooltip if default
+            if(self.tooltip == "doodle.png"):
+                print('\nClick on confirmed target at x: {}, y: {}\n'.format(screen_x, screen_y))
+                found_target = True
+                pyautogui.click()
+                # save this position to the click history
+                self.click_history.append(target_pos)
+            # confirm target tooltip
+            elif self.confirm_tooltip(target_pos):
+                print('\nClick on confirmed target at x: {}, y: {}\n'.format(screen_x, screen_y))
+                found_target = True
                 pyautogui.click()
                 # save this position to the click history
                 self.click_history.append(target_pos)
@@ -140,8 +152,8 @@ class TTRBot:
         return targets
 
     def confirm_tooltip(self, target_position):
-        # check the current screenshot for the limestone tooltip using match template
-        result = cv.matchTemplate(self.screenshot, self.speedchat_tooltip, cv.TM_CCOEFF_NORMED)
+        # check the current screenshot for the target tooltip using match template
+        result = cv.matchTemplate(self.screenshot, self.target_tooltip, cv.TM_CCOEFF_NORMED)
         # get the best match postition
         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
         # if we can closely match the tooltip image, consider the object found
@@ -175,7 +187,8 @@ class TTRBot:
         pyautogui.moveTo(x=screen_x, y=screen_y)
         # short pause to let the mouse movement complete
         sleep(0.500)
-        pyautogui.click()
+        # Click will close our speedchat box
+        # pyautogui.click()
 
     # translate a pixel position on a screenshot image to a pixel position on the screen.
     # pos = (x, y)
@@ -184,7 +197,7 @@ class TTRBot:
     # the WindowCapture __init__ constructor.
     def get_screen_position(self, pos):
         return (pos[0] + self.window_offset[0], pos[1] + self.window_offset[1])
-
+        
     # threading methods
 
     def update_targets(self, targets):
@@ -252,13 +265,13 @@ class TTRBot:
                     self.lock.acquire()
                     if self.state == BotState.MOVING:
                         self.timestamp = time()
-                        self.state = BotState.MINING
+                        self.state = BotState.STILL
                     elif self.state == BotState.BACKTRACKING:
                         self.state = BotState.SEARCHING
                     self.lock.release()
                 
             elif self.state == BotState.STILL:
-                # see if we're done mining. just wait some amount of time
+                # see if delay over. just wait some amount of time
                 if time() > self.timestamp + self.CLICKING_SECONDS:
                     # return to the searching state
                     self.lock.acquire()
