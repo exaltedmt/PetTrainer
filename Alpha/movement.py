@@ -150,6 +150,7 @@ class Movement:
         self.bot = TTRBot((self.wincap.offset_x, self.wincap.offset_y), (self.wincap.w, self.wincap.h), 'tooltip_bear.png')
 
     def locator(self):
+        # Too late, lazy to change variables from "self"
         loop_time = time()
         firstRun = True
 
@@ -207,13 +208,13 @@ class Movement:
                             # No need to feed if excited
                             if self.state == Command.FEED or self.state == Command.SCRATCH:
                                 self.state = 0
-                                isGood = False
+                                self.isGood = False
                             # If we've already said "Good Boy!"
-                            # Don't change state if at upper state.h
-                            elif self.isGood:
+                            elif self.isGood and Command.GOOD:
                                 self.state = Command.TRICKS
+                                self.isGood = False
                             # If Good, then naw.
-                            if self.state == Command.GOOD:
+                            elif self.state == Command.GOOD:
                                 self.isGood = True
                             self.command_chain(command=self.targetList[self.state], tooltip=self.tooltipList[self.state])
                         # If tired, or neutral, not good.
