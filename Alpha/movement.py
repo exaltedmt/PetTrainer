@@ -47,27 +47,27 @@ class Movement:
         self.haystack_wnd = haystack_wnd
         # Our list of commands to execute in sequence
         self.targetList = [
-            "speedchat_bubble.png",
-            "Pets.png",
-            "good.png",
-            "Tricks.png",
-            "Play_dead.png",
-            "Scratch.png",
-            "Feed.png",
-            "Tired.png",
-            "Excited.png"
+            "targets/speedchat_bubble.png",
+            "targets/Pets.png",
+            "targets/good.png",
+            "targets/Tricks.png",
+            "targets/Play_dead.png",
+            "targets/Scratch.png",
+            "targets/Feed.png",
+            "targets/Tired.png",
+            "targets/Excited.png"
         ]
 
         self.tooltipList = [
-            "tooltip.png",
-            "Pets_tt.png",
-            "good_tt.png",
-            "Tricks_tt.png",
-            "Play_dead_tt.png",
-            "Scratch_tt.png",
-            "Feed_tt.png",
-            "Tired_tt.png",
-            "Excited_tt.png"
+            "tooltips/tooltip.png",
+            "tooltips/Pets_tt.png",
+            "tooltips/good_tt.png",
+            "tooltips/Tricks_tt.png",
+            "tooltips/Play_dead_tt.png",
+            "tooltips/Scratch_tt.png",
+            "tooltips/Feed_tt.png",
+            "tooltips/Tired_tt.png",
+            "tooltips/Excited_tt.png"
         ]
 
         # Window Capture has default to TTR, else we choose from main.
@@ -146,8 +146,8 @@ class Movement:
         pdi.press(['up'])
         sleep(4.5)
         self.wincap = WindowCapture(self.haystack_wnd)
-        self.vision = Vision("bear.png")
-        self.bot = TTRBot((self.wincap.offset_x, self.wincap.offset_y), (self.wincap.w, self.wincap.h), 'tooltip_bear.png')
+        self.vision = Vision("targets/bear.png")
+        self.bot = TTRBot((self.wincap.offset_x, self.wincap.offset_y), (self.wincap.w, self.wincap.h), 'tooltips/tooltip_bear.png')
 
     def locator(self):
         # Too late, lazy to change variables from "self"
